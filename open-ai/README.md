@@ -4,6 +4,7 @@
 Use ChatGPT API and VectorDB Lookup to personalise your results.
 
 I recommend using [Anaconda](https://www.anaconda.com/download) to maintain python environments.
+To have anaconda working seamlessly in VSCode, please read [setup anaconda in vscode](https://opensourceoptions.com/blog/setup-anaconda-python-to-work-with-visual-studio-code-on-windows/)
 
 ## Installation
 Install [Langchain](https://github.com/hwchase17/langchain)
