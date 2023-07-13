@@ -8,6 +8,7 @@ To have anaconda working seamlessly in VSCode, please read [setup anaconda in vs
 
 ## Installation
 Install [Langchain](https://github.com/hwchase17/langchain)
+You may need [C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) if on Windows
 
 ```
 pip install langchain openai chromadb tiktoken unstructured
