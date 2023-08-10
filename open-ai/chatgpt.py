@@ -8,44 +8,58 @@ from langchain.document_loaders import DirectoryLoader, TextLoader
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.indexes import VectorstoreIndexCreator
 from langchain.indexes.vectorstore import VectorStoreIndexWrapper
-from langchain.llms import OpenAI
+#from langchain.llms import OpenAI
+from langchain.llms import AzureOpenAI
 from langchain.vectorstores import Chroma
 
 import constants
 
+deployment_name = 'modelgpt35'
+model_name = 'gpt-35-turbo'
+os.environ["OPENAI_API_TYPE"] = "azure"
+os.environ["OPENAI_API_VERSION"] = "2023-05-15"
+os.environ["OPENAI_API_BASE"] = constants.APIBASE
+os.environ["OPENAI_DEPLOYMENT_NAME"] = deployment_name
+os.environ["OPENAI_MODEL_NAME"] = model_name
 os.environ["OPENAI_API_KEY"] = constants.APIKEY
-# Enable to save to disk & reuse the model (for repeated queries on the same data)
-PERSIST = False
 
-query = None
+embeddings_chunk_size = int(constants.EMBEDDINGS_CHUNK_SIZE)
+temperature = float(constants.TEMPERATURE)
+
+prompt = None
 if len(sys.argv) > 1:
-  query = sys.argv[1]
+    prompt = sys.argv[1]
 
-if PERSIST and os.path.exists("persist"):
-  print("Reusing index...\n")
-  vectorstore = Chroma(persist_directory="persist", embedding_function=OpenAIEmbeddings())
-  index = VectorStoreIndexWrapper(vectorstore=vectorstore)
-else:
-  #loader = TextLoader("data/data.txt") # Use this line if you only need data.txt
-  loader = DirectoryLoader("data/")
-  if PERSIST:
-    index = VectorstoreIndexCreator(vectorstore_kwargs={"persist_directory":"persist"}).from_loaders([loader])
-  else:
-    index = VectorstoreIndexCreator().from_loaders([loader])
+embeddings = OpenAIEmbeddings(deployment=deployment_name, model=model_name)
+
+vectorstore = Chroma(persist_directory="persist",
+                     embedding_function=embeddings)
+
+# Create an AzureChatOpenAI llm
+llm = AzureOpenAI(deployment_name=deployment_name,
+                  model_name=model_name, temperature=temperature)
+
+# if os.path.exists("persist"):
+#     print("Reusing index...\n")
+#     index = VectorStoreIndexWrapper(vectorstore=vectorstore)
+# else:
+loader = DirectoryLoader("data/")
+index = VectorstoreIndexCreator(vectorstore_cls=Chroma,
+                                embedding=OpenAIEmbeddings(deployment=deployment_name, model=model_name),
+                                vectorstore_kwargs={"persist_directory": "persist"}).from_loaders([loader])
 
 chain = ConversationalRetrievalChain.from_llm(
-  llm=ChatOpenAI(model="gpt-3.5-turbo"),
-  retriever=index.vectorstore.as_retriever(search_kwargs={"k": 1}),
+    llm=llm, retriever=index.vectorstore.as_retriever(search_kwargs={"k": 1})
 )
 
 chat_history = []
 while True:
-  if not query:
-    query = input("Prompt: ")
-  if query in ['quit', 'q', 'exit']:
-    sys.exit()
-  result = chain({"question": query, "chat_history": chat_history})
-  print(result['answer'])
+    if not prompt:
+        prompt = input("Prompt: ")
+    if prompt in ['quit', 'q', 'exit']:
+        sys.exit()
+    result = chain({"question": prompt, "chat_history": chat_history})
+    print(result['answer'])
 
-  chat_history.append((query, result['answer']))
-  query = None
+    chat_history.append((prompt, result['answer']))
+    prompt = None
